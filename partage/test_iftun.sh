@@ -1,4 +1,3 @@
 #!/bin/bash
-
-./iftun tun0 1
+./iftun "$1" -std
 
