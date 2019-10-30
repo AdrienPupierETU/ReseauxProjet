@@ -2,14 +2,26 @@ CC=gcc
 CFLAGS=-Wall 
 EXEC=iftun
 
-all: $(EXEC)
+all: iftun extremite
 
-$(EXEC): tunalloc.o
-	$(CC) -o $@ tunalloc.o
+extremite: extremite.o
+	$(CC) -o $@ $^
 
-tunalloc.o: tunalloc.c
-	$(CC) -o $@ -c $^ $(CFLAGS)
+extremite.o: extremite.c 
+	$(CC) -o $@ -c $< $(CFLAGS)
+
+
+iftun: iftun.o tunalloc.o
+	$(CC) -o $@ $^
+
+iftun.o: iftun.c tunalloc.h
+	$(CC) -o $@ -c $< $(CFLAGS)
+
+tunalloc.o: tunalloc.c tunalloc.h
+	$(CC) -o $@ -c $< $(CFLAGS)
 
 clean:
 	rm -f *.o 
+	rm extremite
+	rm iftun
 
