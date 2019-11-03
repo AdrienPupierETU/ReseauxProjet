@@ -16,6 +16,15 @@
 #include <string.h>
 #include <netdb.h>
 
+#include <arpa/inet.h>
+
+#include "iftun.h"
+
+#define SERVER_PORT     3005
+#define BUFFER_LENGTH    250
+
+
+
 void printStandard(int fd){
   ssize_t lu;
   char tampon[80+1];
@@ -30,77 +39,87 @@ void printStandard(int fd){
   close(fd); 
 }
 
+void ext_out(char * port){
+    int s, c;
+    int reuseaddr = 1;
+    struct sockaddr_in6 addr;
 
-
-void ext_out(){
-
-  int s,n;
-  int len,on;
-  struct addrinfo *resol;
-  struct addrinfo indic={AI_PASSIVE, PF_INET,SOCK_STREAM,0,0,NULL,NULL,NULL};
-  struct sockaddr_in client;
-  char *port="123";
-  int err;
-
-  err=getaddrinfo(NULL,port,&indic,&resol);
-
-  if(err<0){
-    fprintf(stderr,"Resolution %s\n",gai_strerror(err));
-    exit(1);
-  }
-  if((s=socket(resol->ai_family,resol->ai_socktype,resol->ai_protocol))<0){ //socket
-    perror("Alloc socket");
-    exit(1);
-  }
-  on=1;
-  if(setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(on))<0){
-    perror("option socket");
-    exit(1);
-  }
-  if(bind(s,resol->ai_addr,sizeof(struct sockaddr_in))<0){ //bind
-    perror("bind");
-    exit(1);
-  }
-  freeaddrinfo(resol);
-  if(listen(s,SOMAXCONN)<0){ //listen
-    perror("listen");
-    exit(1);
-  }
-  while(1){
-    len=sizeof(struct sockaddr_in);
-    if((n=accept(s,(struct sockaddr *)&client,(socklen_t*)&len))<0){ //accept
-      perror("accept");
+    if((s = socket(AF_INET6, SOCK_STREAM, 0))<0){
+      perror("Socket");
       exit(1);
     }
-    printStandard(n); //traitement
+    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
+
+    addr.sin6_family = AF_INET6;
+    addr.sin6_port = htons(123);
+    addr.sin6_addr = in6addr_any;
+
+    if(bind(s, (struct sockaddr *)&addr, sizeof(addr))<0){
+      perror("bind");
+      exit(1);
+    }
+    if(listen(s, SOMAXCONN)){
+      perror("listen");
+      exit(1);
+    }
+    printf("Serveur Up without any problems \n");
+    while(1){
+      printf("waiting for client \n");
+      if((c=accept(s,NULL,NULL)<0)){ //accept
+        perror("accept");
+        exit(1);
+      }
+      printStandard(c); //traitement
+    }
+  
+}
+
+void ext_in(int tunfd,char *destAddr){
+  int s;
+  //char * port;
+
+  struct sockaddr_in6 addr;
+  if((s=socket(AF_INET6,SOCK_STREAM,0))<0){
+    perror("Socket");
+    exit(1);
   }
-
+  addr.sin6_family=AF_INET6;
+  addr.sin6_port=htons(123);
+  inet_pton(AF_INET6,destAddr,&addr.sin6_addr);
+  if(connect(s,(struct sockaddr *)&addr,sizeof(addr))<0){
+    perror("connect");
+    exit(1);
+  }
+  fd_set rd_set;
+  FD_ZERO(&rd_set);
+  FD_SET(tunfd, &rd_set);
+  if(FD_ISSET(tunfd, &rd_set)){
+    recopy(tunfd,s);
+  }
 }
 
-
-void ext_in(){
-
-}
 
 void usage(){
-  printf("usage : ./extremite -in <addr>\n");
-  printf("usage : ./extremite -out <port> \n");
+  printf("usage : ./extremite <tunname> -in <addr> <port>\n");
+  printf("usage : ./extremite <tunname> -out <port> \n");
 }
 
 int main (int argc, char** argv){
-  printf("salut \n");
-  fflush(stdin);
-  if(argc<2){
+  if(argc<4){
     usage();
     exit(1);
   }
-  if(strcmp(argv[1],"-in")==0){
-    ext_in();   
-  }else if(strcmp(argv[1],"-out")==0){
-    printf("salut \n");
-    fflush(stdin);
-    ext_out();
+  int tunfd;
+  char *name=argv[1];
+  tunfd=createInterface(name);
+  if(strcmp(argv[2],"-in")==0){
+    char* extrTunnel=argv[3];
+    ext_in(tunfd,extrTunnel);   
+  }else if(strcmp(argv[2],"-out")==0){
+    ext_out(argv[3]);
   }
-
+  printf("Appuyez sur une touche pour terminer\n");
+  getchar();
+  printf("FIN\n");
   return 0;
 }

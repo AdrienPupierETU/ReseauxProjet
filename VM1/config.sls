@@ -21,14 +21,13 @@ ip route del default:
 ##    - ipaddr: 172.16.2.131
 ##    - netmask: 28
 
-eth2:
+eth1:
   network.managed:
     - enabled: True
     - type: eth
     - proto: none
     - ipaddr: 172.16.2.151
     - netmask: 28
-
 ## Configuration de la route vers LAN2 via VM2
 ##routes:
 ##  network.routes:
@@ -40,6 +39,16 @@ eth2:
 ##      - name: LAN4
 ##        ipaddr: 172.16.2.176/28
 ##        gateway: 172.16.2.132
+
+## Configuration de la route vers LAN2 via VM2
+routes:
+  network.routes:
+    - name: eth1
+    - routes:
+      - name: LAN4
+        ipaddr: 172.16.2.176/28
+        gateway: 172.16.2.132
+
 
 
 
