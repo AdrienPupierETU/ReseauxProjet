@@ -39,7 +39,26 @@ void printStandard(int fd){
   close(fd); 
 }
 
-void ext_out(char * port){
+void recopyFromSocket(int fd, int dest){
+  ssize_t lu;
+  char tampon[250+1];
+  do{
+    printf("En attente \n");
+    lu=recv(fd,tampon,250,0);
+    printf("Lu : %s \n",tampon);
+    if(lu>0){
+      printf("Ecriture \n");
+      pWrite(dest, tampon, lu);
+      printf("Ecrit \n");
+    }else{
+      break;
+    }
+  }while(1);
+  close(fd); 
+}
+
+
+void ext_out(char * port,int tunfd){
     int s, c;
     int reuseaddr = 1;
     struct sockaddr_in6 addr;
@@ -69,9 +88,11 @@ void ext_out(char * port){
         perror("accept");
         exit(1);
       }
-      printStandard(c); //traitement
+      //printStandard();
+      
+      recopyFromSocket(c,tunfd);
+      
     }
-  
 }
 
 void ext_in(int tunfd,char *destAddr){
@@ -116,7 +137,7 @@ int main (int argc, char** argv){
     char* extrTunnel=argv[3];
     ext_in(tunfd,extrTunnel);   
   }else if(strcmp(argv[2],"-out")==0){
-    ext_out(argv[3]);
+    ext_out(argv[3],tunfd);
   }
   printf("Appuyez sur une touche pour terminer\n");
   getchar();

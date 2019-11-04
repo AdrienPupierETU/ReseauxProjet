@@ -33,12 +33,11 @@ int pWrite(int fd, char* buff,int buffSize){
 
 void recopy(int src,int dest){
     int buffSize=250;        
-    fflush(stdout);
     while(1){
         char *buff=malloc(sizeof(char)*buffSize);
-        //printf("\n Read TUN \n");
+        printf("\n Read src \n");
         pRead(src, buff, buffSize);
-        //printf("Write dst \n");        
+        printf("Write dst \n");        
         pWrite(dest, buff, buffSize);
     }    
     
