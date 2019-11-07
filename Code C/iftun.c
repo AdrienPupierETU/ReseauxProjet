@@ -66,3 +66,14 @@ int createInterface(char * name){
   system("ip addr");
   return tunfd;
 }
+
+int createInterfaceAutoConfig(char * name){
+  int tunfd;
+  printf("Création de %s\n",name);
+
+  tunfd = tun_alloc(name);
+  int status = system("/mnt/partage/configure-tun.sh");
+  printf("Interface %s Configurée:\n",name);
+  system("ip addr");
+  return tunfd;
+}

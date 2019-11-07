@@ -17,60 +17,85 @@
 #include <netdb.h>
 
 #include <arpa/inet.h>
+#include <pthread.h>
+
+#include <errno.h>
 
 #include "iftun.h"
 
-#define SERVER_PORT     3005
-#define BUFFER_LENGTH    250
+typedef struct{
+  int tunfd;
+  char * addresseDest;
+  char * port;
+} *data_t;
 
 
-
-void printStandard(int fd){
+void printStandard(int socket){
   ssize_t lu;
-  char tampon[80+1];
+  int maxlen=80;
+  char tampon[maxlen];
   do{
-    lu=recv(fd,tampon,80,0);
+    lu=recv(socket,tampon,maxlen,0);
+    printf("Lu value : %lu",lu);
     if(lu>0){
       printf("%s\n",tampon);
     }else{
       break;
     }
   }while(1);
-  close(fd); 
+  close(socket); 
 }
 
-void recopyFromSocket(int fd, int dest){
+void recopyFromSocket(int socket, int dest){
   ssize_t lu;
-  char tampon[250+1];
+  int maxlen=250;
+  char tampon[maxlen];
   do{
     printf("En attente \n");
-    lu=recv(fd,tampon,250,0);
-    printf("Lu : %s \n",tampon);
-    if(lu>0){
-      printf("Ecriture \n");
-      pWrite(dest, tampon, lu);
-      printf("Ecrit \n");
-    }else{
+    lu=recv(socket,tampon,maxlen,0);
+    printf("Lu value : %lu \n",lu);
+    printf("buffer : %s \n",tampon);
+    if(lu==0){
+      printf("Connection fermé par le client \n");
       break;
     }
+    if(lu<0){
+      printf("Erreur recv \n");
+      fprintf(stderr, "recv: %s (%d)\n", strerror(errno), errno);
+      break;
+    }
+    printf("Ecriture \n");
+    pWrite(dest, tampon, lu);
+    printf("Ecrit \n");
   }while(1);
-  close(fd); 
+  close(socket); 
+}
+
+void recopyToSocket(int fd, int socket){
+  int buffSize=250;        
+    while(1){
+        char *buff=malloc(sizeof(char)*buffSize);
+        printf("\n Read src \n");
+        pRead(fd, buff, buffSize);
+        printf("send data \n");
+        send(socket,buff,buffSize,0);
+    }
 }
 
 
 void ext_out(char * port,int tunfd){
-    int s, c;
+    int s, clientfd;
     int reuseaddr = 1;
-    struct sockaddr_in6 addr;
-
-    if((s = socket(AF_INET6, SOCK_STREAM, 0))<0){
+    struct sockaddr_in6 addr,client;
+    int len;
+    if(0>(s = socket(AF_INET6, SOCK_STREAM, 0))){
       perror("Socket");
       exit(1);
     }
     setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 
     addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons(123);
+    addr.sin6_port = htons(atoi(port));
     addr.sin6_addr = in6addr_any;
 
     if(bind(s, (struct sockaddr *)&addr, sizeof(addr))<0){
@@ -84,63 +109,70 @@ void ext_out(char * port,int tunfd){
     printf("Serveur Up without any problems \n");
     while(1){
       printf("waiting for client \n");
-      if((c=accept(s,NULL,NULL)<0)){ //accept
+      len=sizeof(struct sockaddr_in6);
+      if(0>(clientfd=accept(s,(struct sockaddr *)&client,(socklen_t*)&len))){
         perror("accept");
         exit(1);
       }
-      //printStandard();
-      
-      recopyFromSocket(c,tunfd);
-      
+      recopyFromSocket(clientfd,tunfd);
     }
 }
 
-void ext_in(int tunfd,char *destAddr){
+void ext_in(int tunfd,char *destAddr,char *port){
   int s;
-  //char * port;
-
   struct sockaddr_in6 addr;
-  if((s=socket(AF_INET6,SOCK_STREAM,0))<0){
+  if(0>(s=socket(AF_INET6,SOCK_STREAM,0))){
     perror("Socket");
     exit(1);
   }
   addr.sin6_family=AF_INET6;
-  addr.sin6_port=htons(123);
+  addr.sin6_port=htons(atoi(port));
   inet_pton(AF_INET6,destAddr,&addr.sin6_addr);
-  if(connect(s,(struct sockaddr *)&addr,sizeof(addr))<0){
+  /*if(connect(s,(struct sockaddr *)&addr,sizeof(struct sockaddr_in6))<0){
     perror("connect");
     exit(1);
+  }*/
+  while(connect(s,(struct sockaddr *)&addr,sizeof(struct sockaddr_in6))<0){
+      printf("waiting for distant host to run \n");
+      sleep(1);
   }
-  fd_set rd_set;
-  FD_ZERO(&rd_set);
-  FD_SET(tunfd, &rd_set);
-  if(FD_ISSET(tunfd, &rd_set)){
-    recopy(tunfd,s);
-  }
+  printf("Connect done \n");
+  recopyToSocket(tunfd,s);
+}
+
+void * thread_out(void * structt){
+  data_t data = (data_t) structt;
+  ext_out(data->port,data->tunfd);
+  return NULL;
+}
+
+void * thread_in(void * structt){
+  data_t data = (data_t) structt;
+  ext_in(data->tunfd,data->addresseDest,data->port);
+  return NULL;
 }
 
 
-void usage(){
-  printf("usage : ./extremite <tunname> -in <addr> <port>\n");
-  printf("usage : ./extremite <tunname> -out <port> \n");
+void bidirectional(int tunfd,char * addresse, char * port){
+  printf("copy data to struct \n");
+  data_t data =malloc(sizeof(data_t));
+  data->tunfd=tunfd;
+  data->addresseDest=addresse;
+  data->port=port;
+
+  
+  pthread_t threadIn;
+  pthread_t threadOut;
+  printf("lance thread1 \n");
+  if(pthread_create(&threadIn, NULL, thread_in,(void *) data) == -1) {
+	    perror("pthread_create");
+	    exit(1);
+    }
+  printf("lance thread2 \n");
+  if(pthread_create(&threadOut, NULL, thread_out,(void *) data) == -1) {
+	    perror("pthread_create");
+	    exit(1);
+    }
+  
 }
 
-int main (int argc, char** argv){
-  if(argc<4){
-    usage();
-    exit(1);
-  }
-  int tunfd;
-  char *name=argv[1];
-  tunfd=createInterface(name);
-  if(strcmp(argv[2],"-in")==0){
-    char* extrTunnel=argv[3];
-    ext_in(tunfd,extrTunnel);   
-  }else if(strcmp(argv[2],"-out")==0){
-    ext_out(argv[3],tunfd);
-  }
-  printf("Appuyez sur une touche pour terminer\n");
-  getchar();
-  printf("FIN\n");
-  return 0;
-}
