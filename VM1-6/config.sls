@@ -33,7 +33,6 @@ eth2:
     - ipaddr: 172.16.2.156
     - netmask: 28
 
-
 ## Configuration de la route vers LAN2 via VM2
 routes:
   network.routes:
@@ -42,8 +41,15 @@ routes:
       - name: LAN2-6
         ipaddr: fc00:1234:2::/64
         gateway: fc00:1234:1::26
-      - name: LAN2
-        ipaddr: 172.16.2.160/28
-        gateway: 172.16.2.151
+      - name: LAN4
+        ipaddr: 172.16.2.176/28
+        gateway: 172.16.2.2
+
+'nohup /mnt/partage/launch_tunnel_1-6.sh':
+  cmd.run
 
 
+net.ipv4.ip_forward:
+  sysctl:
+    - present
+    - value: 1

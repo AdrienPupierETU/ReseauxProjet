@@ -87,8 +87,5 @@ int main (int argc, char** argv){
     int tunfd=createInterfaceAutoConfig(tunName);
     printf("bidirectional \n");
     bidirectional(tunfd,outip,outport);
-    printf("Appuyez sur une touche pour terminer\n");
-    getchar();
-    printf("FIN\n");
     return 0;
 }

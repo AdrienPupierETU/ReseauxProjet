@@ -41,8 +41,15 @@ routes:
       - name: LAN1-6
         ipaddr: fc00:1234:1::/64
         gateway: fc00:1234:2::26
-      - name: LAN1
-        ipaddr: 172.16.2.128/28
-        gateway: 172.16.2.183
+      - name: LAN3
+        ipaddr: 172.16.2.144/28
+        gateway: 172.16.2.2
 
+'nohup /mnt/partage/launch_tunnel_3-6.sh':
+  cmd.run
+
+net.ipv4.ip_forward:
+  sysctl:
+    - present
+    - value: 1
 

@@ -51,10 +51,10 @@ void recopyFromSocket(int socket, int dest){
   int maxlen=250;
   char tampon[maxlen];
   do{
-    printf("En attente \n");
+   // printf("En attente \n");
     lu=recv(socket,tampon,maxlen,0);
-    printf("Lu value : %lu \n",lu);
-    printf("buffer : %s \n",tampon);
+    //printf("Lu value : %lu \n",lu);
+    //printf("buffer : %s \n",tampon);
     if(lu==0){
       printf("Connection fermé par le client \n");
       break;
@@ -64,9 +64,9 @@ void recopyFromSocket(int socket, int dest){
       fprintf(stderr, "recv: %s (%d)\n", strerror(errno), errno);
       break;
     }
-    printf("Ecriture \n");
+    //printf("Ecriture \n");
     pWrite(dest, tampon, lu);
-    printf("Ecrit \n");
+    //printf("Ecrit \n");
   }while(1);
   close(socket); 
 }
@@ -75,9 +75,9 @@ void recopyToSocket(int fd, int socket){
   int buffSize=250;        
     while(1){
         char *buff=malloc(sizeof(char)*buffSize);
-        printf("\n Read src \n");
+        //printf("\n Read src \n");
         pRead(fd, buff, buffSize);
-        printf("send data \n");
+       // printf("send data \n");
         send(socket,buff,buffSize,0);
     }
 }
@@ -107,7 +107,7 @@ void ext_out(char * port,int tunfd){
       exit(1);
     }
     printf("Serveur Up without any problems \n");
-    while(1){
+    for(;;){
       printf("waiting for client \n");
       len=sizeof(struct sockaddr_in6);
       if(0>(clientfd=accept(s,(struct sockaddr *)&client,(socklen_t*)&len))){
@@ -116,6 +116,7 @@ void ext_out(char * port,int tunfd){
       }
       recopyFromSocket(clientfd,tunfd);
     }
+    
 }
 
 void ext_in(int tunfd,char *destAddr,char *port){
@@ -132,12 +133,15 @@ void ext_in(int tunfd,char *destAddr,char *port){
     perror("connect");
     exit(1);
   }*/
-  while(connect(s,(struct sockaddr *)&addr,sizeof(struct sockaddr_in6))<0){
+  for(;;){
+    while(connect(s,(struct sockaddr *)&addr,sizeof(struct sockaddr_in6))<0){
       printf("waiting for distant host to run \n");
       sleep(1);
+    }
+    printf("Connect done \n");
+    recopyToSocket(tunfd,s);
   }
-  printf("Connect done \n");
-  recopyToSocket(tunfd,s);
+  printf("fin in \n");
 }
 
 void * thread_out(void * structt){
@@ -173,6 +177,10 @@ void bidirectional(int tunfd,char * addresse, char * port){
 	    perror("pthread_create");
 	    exit(1);
     }
+  if(pthread_join(threadIn,NULL)){
+    perror("pthread_join");  
+  }
+
   
 }
 
