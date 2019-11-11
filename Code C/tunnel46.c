@@ -84,7 +84,7 @@ int main (int argc, char** argv){
     printf("outip : %s \n",outip);
     printf("outport : %s \n",outport);
     fclose(file);
-    int tunfd=createInterfaceAutoConfig(tunName);
+    int tunfd=createInterfaceAutoConfig(tunName, inip);
     printf("bidirectional \n");
     bidirectional(tunfd,outip,outport);
     return 0;

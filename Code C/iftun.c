@@ -67,12 +67,18 @@ int createInterface(char * name){
   return tunfd;
 }
 
-int createInterfaceAutoConfig(char * name){
+int createInterfaceAutoConfig(char * name, char * addresse){
   int tunfd;
   printf("Création de %s\n",name);
 
   tunfd = tun_alloc(name);
-  int status = system("/mnt/partage/configure-tun.sh");
+  char cmd[50];
+  snprintf(cmd, sizeof(cmd), "/mnt/partage/configure-tun.sh %s %s", name, addresse);
+  int status = system(cmd);
+  if(status <0){
+      perror("AutoConfig system()");
+      exit(1);
+  }
   printf("Interface %s Configurée:\n",name);
   system("ip addr");
   return tunfd;

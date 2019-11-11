@@ -45,7 +45,7 @@ routes:
         ipaddr: 172.16.2.176/28
         gateway: 172.16.2.2
 
-'nohup /mnt/partage/launch_tunnel_1-6.sh':
+'/mnt/partage/launch_tunnel_1-6.sh & disown':
   cmd.run
 
 

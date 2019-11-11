@@ -1,6 +1,4 @@
 #!/bin/bash
 
-#./iftun tun0 -std &
-
-ip addr add 172.16.2.1/28 dev tun0
+ip addr add $2/28 dev $1
 ip link set tun0 up
